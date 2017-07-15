@@ -1,0 +1,8 @@
+BayesianRidge           0.5703
+MLPRegressor            0.5544
+MLPRegressor            0.5594  (lbfgs)
+KNeighborsRegressor     0.5501  (50 neighbors)
+Ridge                   0.5624
+Ridge                   0.5705  (alpha=20)
+Ridge                   0.5714  (alpha=50)
+Lasso                   0.5443
