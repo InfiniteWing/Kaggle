@@ -87,6 +87,38 @@ def Amazon_Model(input_shape=(128, 128,3),weight_path=None):
         if os.path.isfile(weight_path):
             model.load_weights(weight_path)
     return model
+    
+def Amazon_Model_VGG19(input_shape=(128, 128,3),weight_path=None):
+    from keras.applications.vgg19 import VGG19
+    base_model=VGG19(include_top=False,
+                   weights='imagenet',
+                   input_shape=input_shape)
+
+    model = Sequential()
+    model.add(BatchNormalization(input_shape=input_shape))
+    model.add(base_model)
+    model.add(Flatten())
+    model.add(Dense(17, activation='sigmoid'))
+    if(weight_path!=None):
+        if os.path.isfile(weight_path):
+            model.load_weights(weight_path)
+    return model
+
+def Amazon_Model_VGG16(input_shape=(128, 128,3),weight_path=None):
+    from keras.applications.vgg16 import VGG16
+    base_model=VGG19(include_top=False,
+                   weights='imagenet',
+                   input_shape=input_shape)
+
+    model = Sequential()
+    model.add(BatchNormalization(input_shape=input_shape))
+    model.add(base_model)
+    model.add(Flatten())
+    model.add(Dense(17, activation='sigmoid'))
+    if(weight_path!=None):
+        if os.path.isfile(weight_path):
+            model.load_weights(weight_path)
+    return model
 
 def KFold_Train(x_train,y_train,nfolds=5,batch_size=128):
     model = Amazon_Model()
