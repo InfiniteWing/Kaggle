@@ -44,7 +44,7 @@ xgb_params = {
 dtrain = xgb.DMatrix(train.drop(['y','ID'], axis=1), y_train)
 dtest = xgb.DMatrix(test.drop(['ID'], axis=1))
 # xgboost, cross-validation
-'''
+
 cv_result = xgb.cv(xgb_params, 
                    dtrain, 
                    num_boost_round=800, # increase to have better results (~700)
@@ -52,8 +52,8 @@ cv_result = xgb.cv(xgb_params,
                    verbose_eval=50, 
                    show_stdv=False
                   )
-'''
-num_boost_rounds = 800#len(cv_result)
+
+num_boost_rounds = len(cv_result)
 print(num_boost_rounds)
 
 # train model
