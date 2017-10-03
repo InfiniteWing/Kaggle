@@ -22,9 +22,60 @@ def gini_xgb(preds, dtrain):
     labels = dtrain.get_label()
     gini_score = gini_normalized(labels, preds)
     return [('gini', gini_score)]
+
+def all_miss(row):
+    all = 0
+    for v in row:
+        if(v == -1):
+            all += 1
+    return all
+
+def same_group_miss(row, headers, group):
+    all = 0
+    for i, v in enumerate(headers):
+        try:
+            if(v.split('_')[1] == group):
+                if(row[i] == -1):
+                    all += 1
+        except:
+            pass
+            
+    return all        
+
+def same_group_sum(row, headers, group):
+    sum = 0
+    miss = True
+    for i, v in enumerate(headers):
+        try:
+            if(v.split('_')[1] == group):
+                if(row[i] != -1):
+                    sum += row[i]
+                    miss = False
+        except:
+            pass
+            
+    if(miss):
+        return -1
+    return sum    
+
+groups = ['ind', 'reg', 'car', 'calc']
     
 df_train = pd.read_csv('../input/train.csv')
 df_test = pd.read_csv('../input/test.csv')
+
+headers = df_test.columns.values
+for group in groups:
+    df_train[group + '_miss'] = df_train.apply(lambda row: same_group_miss(row, headers, group), axis = 1)
+    df_train[group + '_sum'] = df_train.apply(lambda row: same_group_miss(row, headers, group), axis = 1)
+    
+    df_test[group + '_miss'] = df_test.apply(lambda row: same_group_miss(row, headers, group), axis = 1)
+    df_test[group + '_sum'] = df_test.apply(lambda row: same_group_miss(row, headers, group), axis = 1)
+
+df_train['all_miss'] = df_train.apply(all_miss, axis = 1)
+df_test['all_miss'] = df_test.apply(all_miss, axis = 1)
+
+df_train.to_csv("../input/pre_train.csv", index=False)   
+df_test.to_csv("../input/pre_test.csv", index=False)   
 
 target_train = df_train['target'].values
 id_test = df_test['id'].values
@@ -48,19 +99,22 @@ for train_index, test_index in kf.split(train):
     # params configuration also from anokas' kernel
     xgb_params = {
         'eta': 0.02,
-        'max_depth': 6,
+        'max_depth': 4,
         'subsample': 0.9,
+        'colsample_bytree': 0.9,
         'objective': 'binary:logistic',
-        'silent': 1,
-        'colsample_bytree': 0.9
+        'eval_metric': 'auc',
+        'seed': 3228,
+        'silent': True
     }
+
 
     # form DMatrices for Xgboost training
     d_train = xgb.DMatrix(train_X, train_y)
     d_valid = xgb.DMatrix(valid_X, valid_y)
     d_test = xgb.DMatrix(test)
-    
-    model = xgb.train(xgb_params, d_train, num_boost_round = 600)
+    watchlist = [(d_train, 'train'), (d_valid, 'valid')]
+    model = xgb.train(xgb_params, d_train, 2000, watchlist, early_stopping_rounds=100, feval=gini_xgb, maximize=True, verbose_eval=50)
                         
     xgb_pred = model.predict(d_test)
     xgb_preds.append(list(xgb_pred))
