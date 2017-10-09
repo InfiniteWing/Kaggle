@@ -2,14 +2,20 @@
 # This script is inspired by this discussion:
 # https://www.kaggle.com/c/zillow-prize-1/discussion/33710
 #
+# Ver 4. updated the dataset
+# LB: 0.06450
+#
 
 import numpy as np
 import pandas as pd
 import xgboost as xgb
 from sklearn.preprocessing import LabelEncoder
 
-properties = pd.read_csv('../input/properties_2016.csv')
-train = pd.read_csv("../input/train_2016_v2.csv")
+properties = pd.read_csv('../input/properties_2017.csv')
+train_2016 = pd.read_csv("../input/train_2016_v2.csv")
+train_2017 = pd.read_csv("../input/train_2017.csv")
+train = pd.concat([train_2016, train_2017], ignore_index=True)
+
 for c in properties.columns:
     properties[c]=properties[c].fillna(-1)
     if properties[c].dtype == 'object':
