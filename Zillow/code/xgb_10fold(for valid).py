@@ -1,7 +1,7 @@
 #
 # This script is inspired by this discussion:
 # https://www.kaggle.com/c/zillow-prize-1/discussion/33710
-#
+# Author: InfiniteWing
 # Ver 4. updated the dataset
 # LB: 0.06450
 #

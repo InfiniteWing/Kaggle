@@ -1,3 +1,8 @@
+#
+# Source: https://www.kaggle.com/scirpus/genetic-programming-lb-0-0643904
+# Revised by InfiniteWing
+#
+
 import gc
 import numpy as np
 import pandas as pd

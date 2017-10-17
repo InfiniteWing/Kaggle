@@ -1,9 +1,7 @@
-# This Python 3 environment comes with many helpful analytics libraries installed
-
-# It is defined by the kaggle/python docker image: https://github.com/kaggle/docker-python
-
-# For example, here's several helpful packages to load in 
-
+# 
+# Source: https://www.kaggle.com/vber852/simple-lgbm-model-lb-0-064404/code
+# Revised by InfiniteWing
+#
 
 
 import numpy as np # linear algebra

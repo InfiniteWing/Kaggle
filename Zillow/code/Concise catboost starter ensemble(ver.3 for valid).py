@@ -1,3 +1,7 @@
+#
+# Source: https://www.kaggle.com/seesee/concise-catboost-starter-ensemble-plb-0-06435/output
+# Revised by InfiniteWing
+#
 import numpy as np # linear algebra
 import pandas as pd # data processing, CSV file I/O (e.g. pd.read_csv)
 from catboost import CatBoostRegressor
