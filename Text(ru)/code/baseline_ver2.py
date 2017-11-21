@@ -1,6 +1,6 @@
 ########################################################
 '''
-READ MY COMMENT BELOW
+source from https://www.kaggle.com/arccosmos/ru-baseline-lb-0-9799-from-en-thread
 '''
 ########################################################
 
