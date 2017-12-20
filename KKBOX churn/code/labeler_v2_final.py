@@ -26,8 +26,6 @@ for i, row in tqdm(transactions.iterrows(), total=total_rows):
     if(current_msno != msno or i == total_rows - 1):
         if(current_msno != ''):
             for z, target in enumerate(targets):
-                if(z == 0):
-                    continue
                 for j in range(len(transaction_dates)-1,-1,-1):
                     l = int(transaction_dates[j]/100)
                     r = int(membership_expire_dates[j]/100)
