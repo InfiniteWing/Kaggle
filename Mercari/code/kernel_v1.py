@@ -8,14 +8,14 @@ import datetime
 import matplotlib.pyplot as plt
 start_datetime = datetime.datetime.now()
 print('Start at {}'.format(start_datetime.strftime("%Y-%m-%d %H:%M:%S")))
-df_train = pd.read_csv('../input/train.tsv', sep='\t', quoting=csv.QUOTE_NONE)
-df_test = pd.read_csv('../input/test.tsv', sep='\t', quoting=csv.QUOTE_NONE)
+df_train = pd.read_csv('../input/train.tsv', sep='\t', engine='python')
+df_test = pd.read_csv('../input/test.tsv', sep='\t', engine='python')
 
 print('Load data complete\nShape train: {}\nShape test: {}'.format(df_train.shape,df_test.shape))
 median_price = df_train['price'].median()
 mean_price = df_train['price'].mean()
 exclude_cols = ['name', 'category_name', 'brand_name', 'item_description', 'category_1', 'category_2', 'category_3']
-
+'''
 def category_detail(x, i):
     try:
         x = x.split('/')[i]
@@ -185,3 +185,4 @@ end_datetime = datetime.datetime.now()
 print('End at {}'.format(end_datetime.strftime("%Y-%m-%d %H:%M:%S")))
 print('Total testing time: {} seconds'.format((end_datetime-train_end_datetime).total_seconds()))    
 print('Training + Testing time: {} seconds'.format((end_datetime-start_datetime).total_seconds()))
+'''
