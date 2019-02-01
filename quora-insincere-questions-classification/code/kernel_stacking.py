@@ -236,7 +236,7 @@ nltk_pos_feature_df_test = get_pos_feature_df_test()
 #nltk_pos_feature_df_train = get_pos_feature_df(train)
 #nltk_pos_feature_df_test = get_pos_feature_df(test)
 
-max_features = 120000
+max_features = 95000
 tk = Tokenizer(lower = True, filters='', num_words=max_features)
 full_text = list(train['question_text'].values) + list(test['question_text'].values)
 tk.fit_on_texts(full_text)
@@ -244,8 +244,8 @@ tk.fit_on_texts(full_text)
 train_tokenized = tk.texts_to_sequences(train['question_text'].fillna('missing'))
 test_tokenized = tk.texts_to_sequences(test['question_text'].fillna('missing'))
 
-max_len = 80
-maxlen = 80
+max_len = 71
+maxlen = 71
 X_train = pad_sequences(train_tokenized, maxlen = max_len)
 X_test = pad_sequences(test_tokenized, maxlen = max_len)
 print(X_train.shape)
@@ -491,7 +491,7 @@ seed_everything()
 
 train_preds = np.zeros(len(train))
 test_preds = np.zeros((len(test), len(splits)))
-n_epochs = 6
+n_epochs = 4
 from tqdm import tqdm
 from sklearn.metrics import f1_score
 for i, (train_idx, valid_idx) in enumerate(splits):    
@@ -543,7 +543,7 @@ nltk_pos_feature_df_train.to_csv('../input/nltk_pos_feature_df_train_all.csv', i
 nltk_pos_feature_df_test.to_csv('../input/nltk_pos_feature_df_test_all.csv', index=False, float_format = '%.10f')
 
 
-
+'''
 import xgboost as xgb
 from sklearn.metrics import log_loss, f1_score
 
@@ -597,6 +597,6 @@ y_preds /= NFold
 sub['prediction'] = y_preds > threshold_all
 sub.to_csv("submission.csv", index=False)
 
-
+'''
 
 
