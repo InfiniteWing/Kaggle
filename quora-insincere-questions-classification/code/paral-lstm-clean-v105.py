@@ -1,7 +1,14 @@
+# v40 final
+# linear->26, dropout->0.1
+# create sub file
+# lrs = [0.0012, 0.0011, 0.001, 0.0009, 0.0008]
+# Public Score: 0.696
+# CV Score: 0.6844
+
 import numpy as np
 import pandas as pd
 import seaborn as sns
-from nltk.tokenize import TweetTokenizer
+from nltk.tokenize import TweetTokenizer, word_tokenize
 import datetime
 import lightgbm as lgb
 from scipy import stats
@@ -17,6 +24,8 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.svm import LinearSVC
 from sklearn.multiclass import OneVsRestClassifier
 import time
+import datetime
+from multiprocessing import Pool
 pd.set_option('max_colwidth',400)
 
 from keras.preprocessing.text import Tokenizer
@@ -38,15 +47,19 @@ import re
 import os
 from torch.optim.lr_scheduler import StepLR, ReduceLROnPlateau, CosineAnnealingLR
 
-def seed_torch(seed=1029):
+UNKNOWN = '#unknown#'
+
+def seed_everything(seed=3228):
     random.seed(seed)
     os.environ['PYTHONHASHSEED'] = str(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
     torch.backends.cudnn.deterministic = True
-    
-train = pd.read_csv("../input/train.csv")
+seed_everything()
+
+
+train_df = pd.read_csv("../input/train.csv")
 test = pd.read_csv("../input/test.csv")
 sub = pd.read_csv('../input/sample_submission.csv')
 
@@ -63,6 +76,13 @@ def clean_text(x):
             x = x.replace(punct, ' {} '.format(punct))
     return x
 
+def clean_quote(x):
+    if "'s" in x:
+        x = x.replace("'s", '')
+    if "'" in x:
+        x = x.replace("'", '')
+    return x
+    
 def clean_numbers(x):
     x = re.sub('[0-9]{5,}', '#####', x)
     x = re.sub('[0-9]{4}', '####', x)
@@ -141,135 +161,40 @@ def replace_typical_misspell(text):
     return mispellings_re.sub(replace, text)
 
 # Clean the text
-train["question_text"] = train["question_text"].apply(lambda x: clean_text(x.lower()))
+print(datetime.datetime.now(), 'Clean the text')
+
+train_df["question_text"] = train_df["question_text"].apply(lambda x: clean_text(x.lower()))
 test["question_text"] = test["question_text"].apply(lambda x: clean_text(x.lower()))
 
 # Clean numbers
-train["question_text"] = train["question_text"].apply(lambda x: clean_numbers(x))
+print(datetime.datetime.now(), 'Clean numbers')
+train_df["question_text"] = train_df["question_text"].apply(lambda x: clean_numbers(x))
 test["question_text"] = test["question_text"].apply(lambda x: clean_numbers(x))
 
 # Clean speelings
-train["question_text"] = train["question_text"].apply(lambda x: replace_typical_misspell(x))
+print(datetime.datetime.now(), 'Clean speelings')
+train_df["question_text"] = train_df["question_text"].apply(lambda x: replace_typical_misspell(x))
 test["question_text"] = test["question_text"].apply(lambda x: replace_typical_misspell(x))
 
-def get_pos_feature_df_train():
-    df = pd.read_csv("../input/nltk_pos_feature_df_train.csv")
-    return df
-def get_pos_feature_df_test():
-    df = pd.read_csv("../input/nltk_pos_feature_df_test.csv")
-    return df
-    
-def get_pos_feature_df(df):
-    pos_tags=[
-        'UNKNOWN',
-        'CC',
-        'CD',
-        'DT',
-        'EX',
-        'FW',
-        'IN',
-        'JJ',
-        'JJR',
-        'JJS',
-        'LS',
-        'MD',
-        'NN',
-        'NNS',
-        'NNP',
-        'NNPS',
-        'PDT',
-        'POS',
-        'PRP',
-        'PRP$',
-        'RB',
-        'RBR',
-        'RBS',
-        'RP',
-        'SYM',
-        'TO',
-        'UH',
-        'VB',
-        'VBD',
-        'VBG',
-        'VBN',
-        'VBP',
-        'VBZ',
-        'WDT',
-        'WP',
-        'WP$',
-        'WRB'
-    ]
-    print(datetime.datetime.now())
-    pos_tags_dict = {}
-    for i, v in enumerate(pos_tags):
-        pos_tags_dict[v] = i
-    results = [[] for _ in range(len(pos_tags))]
-    nltk_df = pd.DataFrame({'qid': df['qid'].values, 'question_text':df['question_text'].values})
-    del df
-    nltk_df['question_text'] = nltk_df['question_text'].apply(word_tokenize)
-    nltk_df['question_text'] = nltk_df['question_text'].apply(nltk.pos_tag)
-    for index, row in nltk_df.iterrows():
-        tags = row['question_text']
-        counts = [0 for _ in range(len(pos_tags))]
-        for tag in tags:
-            if(tag[1] in pos_tags_dict):
-                counts[pos_tags_dict[tag[1]]] += 1
-            else:
-                counts[0] += 1
-        total = sum(counts)
-        counts = [a/total for a in counts]
-        for i, r in enumerate(counts):
-            results[i].append(r)
-    nltk_pos_feature_df = pd.DataFrame({'qid': nltk_df['qid'].values})
-    for i, v in enumerate(pos_tags):
-        nltk_pos_feature_df[v] = results[i]
-    print(nltk_pos_feature_df.head())
-    print(datetime.datetime.now())
-    return nltk_pos_feature_df
+# Clean the quote
+print(datetime.datetime.now(), 'Clean the quote')
+train_df["question_text"] = train_df["question_text"].apply(lambda x: clean_quote(x.lower()))
+test["question_text"] = test["question_text"].apply(lambda x: clean_quote(x.lower()))
 
-import nltk
-from nltk.tokenize import TweetTokenizer, word_tokenize
+# Unknown
+train_df['question_text'] = train_df['question_text'].fillna(UNKNOWN)
+test['question_text'] = test['question_text'].fillna(UNKNOWN)
+
+
 from tqdm import tqdm
 
-nltk_pos_feature_df_train = get_pos_feature_df_train()
-nltk_pos_feature_df_test = get_pos_feature_df_test()
-#nltk_pos_feature_df_train = get_pos_feature_df(train)
-#nltk_pos_feature_df_test = get_pos_feature_df(test)
 
-max_features = 95000
+max_features = 90000
 tk = Tokenizer(lower = True, filters='', num_words=max_features)
-full_text = list(train['question_text'].values) + list(test['question_text'].values)
+full_text = list(train_df['question_text'].values) + list(test['question_text'].values)
 tk.fit_on_texts(full_text)
 
-train_tokenized = tk.texts_to_sequences(train['question_text'].fillna('missing'))
-test_tokenized = tk.texts_to_sequences(test['question_text'].fillna('missing'))
-
-max_len = 71
-maxlen = 71
-X_train = pad_sequences(train_tokenized, maxlen = max_len)
-X_test = pad_sequences(test_tokenized, maxlen = max_len)
-print(X_train.shape)
-print(X_test.shape)
-
-'''
-for col_index in range(X_train.shape[1]):
-    nltk_pos_feature_df_train['pad_sequences'+str(col_index)] = X_train[:,col_index]
-X_train = np.array(nltk_pos_feature_df_train.drop(['qid'], axis=1))
-print(X_train.shape)
-for col_index in range(X_test.shape[1]):
-    nltk_pos_feature_df_test['pad_sequences'+str(col_index)] = X_test[:,col_index]
-X_test = np.array(nltk_pos_feature_df_test.drop(['qid'], axis=1))
-print(X_test.shape)
-'''
-
-y_train = train['target'].values
-
-def sigmoid(x):
-    return 1 / (1 + np.exp(-x))
-    
-from sklearn.model_selection import StratifiedKFold
-NFold = 4
-splits = list(StratifiedKFold(n_splits=NFold, shuffle=True, random_state=10).split(X_train, y_train))
+print('token length =', len(tk.word_index))
 
 embed_size = 300
 embedding_path = "../input/embeddings/glove.840B.300d/glove.840B.300d.txt"
@@ -288,18 +213,41 @@ for word, i in word_index.items():
     
 embedding_path = "../input/embeddings/paragram_300_sl999/paragram_300_sl999.txt"
 def get_coefs(word,*arr): return word, np.asarray(arr, dtype='float32')
-embedding_index = dict(get_coefs(*o.split(" ")) for o in open(embedding_path, encoding='utf-8', errors='ignore') if len(o)>100)
-# all_embs = np.stack(embedding_index.values())
+embedding_index1 = dict(get_coefs(*o.split(" ")) for o in open(embedding_path, encoding='utf-8', errors='ignore') if len(o)>100)
+# all_embs = np.stack(embedding_index1.values())
 # emb_mean,emb_std = all_embs.mean(), all_embs.std()
 emb_mean,emb_std = -0.0053247833, 0.49346462
 embedding_matrix1 = np.random.normal(emb_mean, emb_std, (nb_words + 1, embed_size))
 for word, i in word_index.items():
     if i >= max_features: continue
-    embedding_vector = embedding_index.get(word)
+    embedding_vector = embedding_index1.get(word)
     if embedding_vector is not None: embedding_matrix1[i] = embedding_vector
     
 embedding_matrix = np.mean([embedding_matrix, embedding_matrix1], axis=0)
 del embedding_matrix1
+
+
+train_tokenized = tk.texts_to_sequences(train_df['question_text'])
+test_tokenized = tk.texts_to_sequences(test['question_text'])
+
+max_len = 72
+maxlen = 72
+X_train = pad_sequences(train_tokenized, maxlen = max_len)
+X_test = pad_sequences(test_tokenized, maxlen = max_len)
+print(X_train.shape)
+print(X_test.shape)
+
+y_train = train_df['target'].values
+
+def sigmoid(x):
+    return 1 / (1 + np.exp(-x))
+    
+from sklearn.model_selection import StratifiedKFold
+NFold = 4
+splits = list(StratifiedKFold(n_splits=NFold, shuffle=True, random_state=10).split(X_train, y_train))
+
+
+
 
 class Attention(nn.Module):
     def __init__(self, feature_dim, step_dim, bias=True, **kwargs):
@@ -359,10 +307,10 @@ class NeuralNet(nn.Module):
         self.lstm_attention = Attention(hidden_size*2, maxlen)
         self.gru_attention = Attention(hidden_size*2, maxlen)
         
-        self.linear = nn.Linear(1024, 16)
+        self.linear = nn.Linear(128*8, 26)
         self.relu = nn.ReLU()
         self.dropout = nn.Dropout(0.1)
-        self.out = nn.Linear(16, 1)
+        self.out = nn.Linear(26, 1)
         
     def forward(self, x):
         h_embedding = self.embedding(x)
@@ -387,8 +335,6 @@ class NeuralNet(nn.Module):
 m = NeuralNet()
 
 def train_model(model, x_train, y_train, x_val, y_val, validate=True):
-    optimizer = torch.optim.Adam(model.parameters())
-
     # scheduler = CosineAnnealingLR(optimizer, T_max=5)
     #scheduler = StepLR(optimizer, step_size=2, gamma=0.1)
     
@@ -400,9 +346,10 @@ def train_model(model, x_train, y_train, x_val, y_val, validate=True):
     
     loss_fn = torch.nn.BCEWithLogitsLoss(reduction='mean').cuda()
     best_score = -np.inf
-    
+    lrs = [0.0012, 0.0011, 0.001, 0.0009, 0.0008]
     for epoch in range(n_epochs):
         start_time = time.time()
+        optimizer = torch.optim.Adam(model.parameters(), lr=lrs[epoch])
         model.train()
         avg_loss = 0.
         
@@ -467,7 +414,7 @@ test = torch.utils.data.TensorDataset(x_test_cuda)
 batch_size = 512
 test_loader = torch.utils.data.DataLoader(test, batch_size=batch_size, shuffle=False)
 
-seed=1029
+seed=3228#-SL
 
 def threshold_search(y_true, y_proba):
     best_threshold = 0
@@ -480,16 +427,8 @@ def threshold_search(y_true, y_proba):
     search_result = {'threshold': best_threshold, 'f1': best_score}
     return search_result
 
-def seed_everything(seed=1234):
-    random.seed(seed)
-    os.environ['PYTHONHASHSEED'] = str(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed(seed)
-    torch.backends.cudnn.deterministic = True
-seed_everything()
 
-train_preds = np.zeros(len(train))
+train_preds = np.zeros(len(train_df))
 test_preds = np.zeros((len(test), len(splits)))
 n_epochs = 4
 from tqdm import tqdm
@@ -524,79 +463,19 @@ for i, (train_idx, valid_idx) in enumerate(splits):
     
 #search_result = threshold_search(y_train, train_preds)
 
-nltk_pos_feature_df_train['nn_preds'] = train_preds
-nltk_pos_feature_df_test['nn_preds'] = test_preds.mean(1)
 
-for col_index in range(X_train.shape[1]):
-    nltk_pos_feature_df_train['pad_sequences'+str(col_index)] = X_train[:,col_index]
-del X_train
-X_train = np.array(nltk_pos_feature_df_train.drop(['qid'], axis=1))
-print(X_train.shape)
+valid_pred = train_preds
+valid_y = train_df['target'].values
 
-for col_index in range(X_test.shape[1]):
-    nltk_pos_feature_df_test['pad_sequences'+str(col_index)] = X_test[:,col_index]
-del X_test
-X_test = np.array(nltk_pos_feature_df_test.drop(['qid'], axis=1))
-print(X_test.shape)
+best_score = -1
+best_threshold = -1
+for t in range(100):
+    threshold = t*0.01 + 0.01
+    valid_score = f1_score(valid_y, valid_pred>threshold)
+    if(best_score < valid_score):
+        best_score = valid_score
+        best_threshold = threshold
+print('Valid F1 = ', best_score, best_threshold)
 
-nltk_pos_feature_df_train.to_csv('../input/nltk_pos_feature_df_train_all.csv', index=False, float_format = '%.10f')
-nltk_pos_feature_df_test.to_csv('../input/nltk_pos_feature_df_test_all.csv', index=False, float_format = '%.10f')
-
-
-'''
-import xgboost as xgb
-from sklearn.metrics import log_loss, f1_score
-
-y_preds = None
-threshold_all = 0
-for i, (train_index, test_index) in enumerate(splits):
-    print("Start fold", i)
-    train_X, valid_X = X_train[train_index], X_train[test_index]
-    train_y, valid_y = y_train[train_index], y_train[test_index]
-    
-    d_train = xgb.DMatrix(train_X, train_y)
-    d_valid = xgb.DMatrix(valid_X, valid_y)
-    d_test = xgb.DMatrix(X_test)
-    
-    watchlist = [(d_train, 'train'), (d_valid, 'valid')]
-    
-    # xgboost params
-    xgb_params = {
-        'eta': 0.03,
-        'max_depth': 8,
-        'subsample': 0.8,
-        'objective': 'reg:logistic',
-        'eval_metric': 'logloss',
-        'seed': 3228,
-        'silent': 1
-    }
-    model = xgb.train(xgb_params, d_train, 480, watchlist, early_stopping_rounds=30, verbose_eval=30)
-    valid_pred = model.predict(d_valid)
-    y_pred = model.predict(d_test)
-    
-    best_score = -1
-    logloss_score = log_loss(valid_y, valid_pred)
-    best_threshold = -1
-    for t in range(100):
-        threshold = t*0.01 + 0.01
-        valid_score = f1_score(valid_y, valid_pred>threshold)
-        if(best_score < valid_score):
-            best_score = valid_score
-            best_threshold = threshold
-    print('Valid F1 = ', best_score, best_threshold)
-    threshold_all += best_threshold
-    print('Valid logloss = ', logloss_score)
-    #valid_scores += best_score
-    if(i == 0):
-        y_preds = y_pred
-    else:
-        y_preds += y_pred
-threshold_all /= NFold
-y_preds /= NFold
-
-sub['prediction'] = y_preds > threshold_all
-sub.to_csv("submission.csv", index=False)
-
-'''
-
-
+sub['prediction'] = test_preds.mean(1) > best_threshold
+sub.to_csv('submission.csv', index=False)
